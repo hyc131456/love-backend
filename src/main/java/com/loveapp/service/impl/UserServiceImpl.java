@@ -140,6 +140,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (dto.getBirthday() != null) {
             user.setBirthday(dto.getBirthday());
         }
+        if (dto.getEnableNotification() != null) {
+            user.setEnableNotification(dto.getEnableNotification());
+        }
         
         updateById(user);
     }

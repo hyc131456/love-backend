@@ -41,6 +41,24 @@ public class EventController {
         List<EventDTO> list = eventService.getDayEvents(date);
         return Result.success(list);
     }
+
+    /**
+     * 获取纪念日列表
+     */
+    @GetMapping("/events/anniversaries")
+    public Result<List<EventDTO>> getAnniversaryEvents() {
+        List<EventDTO> list = eventService.getAnniversaryEvents();
+        return Result.success(list);
+    }
+
+    /**
+     * 获取最近的纪念日提醒
+     */
+    @GetMapping("/events/upcoming-reminder")
+    public Result<EventDTO> getUpcomingReminder() {
+        EventDTO dto = eventService.getUpcomingReminder();
+        return Result.success(dto);
+    }
     
     /**
      * 添加事件

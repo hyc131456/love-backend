@@ -84,4 +84,7 @@ public class Event {
     public static final String TYPE_DIARY = "diary";
     public static final String TYPE_RECIPE = "recipe";
     public static final String TYPE_PERIOD = "period";
+    public static final String TYPE_DATE = "date";
+    public static final String TYPE_BIRTHDAY = "birthday";
+    public static final String TYPE_TRAVEL = "travel";
 }

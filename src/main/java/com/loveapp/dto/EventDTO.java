@@ -52,4 +52,16 @@ public class EventDTO {
     
     /** 状态 */
     private Integer status;
+
+    /** 下一次发生日期 */
+    private LocalDate nextOccurrence;
+
+    /** 距离下一次发生还有多少天 */
+    private Long daysUntil;
+
+    /** 提醒摘要 */
+    private String reminderSummary;
+
+    /** 是否为系统生成的纪念日 */
+    private Integer systemGenerated;
 }

@@ -29,4 +29,7 @@ public class UserDTO {
     
     /** 情侣空间ID */
     private Long coupleId;
+
+    /** 是否开启通知 */
+    private Integer enableNotification;
 }

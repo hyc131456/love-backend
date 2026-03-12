@@ -21,6 +21,16 @@ public interface EventService extends IService<Event> {
      * 获取日事件列表
      */
     List<EventDTO> getDayEvents(String date);
+
+    /**
+     * 获取纪念日列表
+     */
+    List<EventDTO> getAnniversaryEvents();
+
+    /**
+     * 获取最近的纪念日提醒
+     */
+    EventDTO getUpcomingReminder();
     
     /**
      * 添加事件
