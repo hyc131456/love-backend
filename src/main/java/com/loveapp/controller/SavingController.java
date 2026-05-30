@@ -38,8 +38,9 @@ public class SavingController {
     public Result<Void> deposit(
             @PathVariable Long id,
             @RequestParam BigDecimal amount,
-            @RequestParam(required = false) String note) {
-        savingService.deposit(id, amount, note);
+            @RequestParam(required = false) String note,
+            @RequestParam(required = false) String depositorRole) {
+        savingService.deposit(id, amount, note, depositorRole);
         return Result.success();
     }
     

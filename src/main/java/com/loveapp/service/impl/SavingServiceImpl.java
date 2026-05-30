@@ -6,9 +6,11 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.loveapp.common.ResultCode;
 import com.loveapp.common.exception.BusinessException;
 import com.loveapp.dto.SavingDTO;
+import com.loveapp.entity.Couple;
 import com.loveapp.entity.Saving;
 import com.loveapp.entity.SavingRecord;
 import com.loveapp.entity.User;
+import com.loveapp.mapper.CoupleMapper;
 import com.loveapp.mapper.SavingMapper;
 import com.loveapp.mapper.SavingRecordMapper;
 import com.loveapp.mapper.UserMapper;
@@ -33,6 +35,9 @@ public class SavingServiceImpl extends ServiceImpl<SavingMapper, Saving> impleme
     
     @Autowired
     private UserMapper userMapper;
+
+    @Autowired
+    private CoupleMapper coupleMapper;
     
     @Autowired
     private SavingRecordMapper savingRecordMapper;
@@ -110,10 +115,11 @@ public class SavingServiceImpl extends ServiceImpl<SavingMapper, Saving> impleme
     
     @Override
     @Transactional
-    public void deposit(Long id, BigDecimal amount, String note) {
+    public void deposit(Long id, BigDecimal amount, String note, String depositorRole) {
         Long userId = UserContext.getUserId();
         Long coupleId = getCoupleId();
         User user = userMapper.selectById(userId);
+        Couple couple = coupleMapper.selectById(coupleId);
         
         Saving saving = getById(id);
         if (saving == null || !saving.getCoupleId().equals(coupleId)) {
@@ -124,10 +130,12 @@ public class SavingServiceImpl extends ServiceImpl<SavingMapper, Saving> impleme
             throw new BusinessException("该储蓄目标已完成或放弃");
         }
         
+        User depositor = resolveDepositor(user, couple, depositorRole);
+
         // 更新储蓄金额
         saving.setCurrentAmount(saving.getCurrentAmount().add(amount));
         
-        if ("A".equals(user.getRole())) {
+        if ("A".equals(depositor.getRole())) {
             saving.setUserAAmount(saving.getUserAAmount().add(amount));
         } else {
             saving.setUserBAmount(saving.getUserBAmount().add(amount));
@@ -145,7 +153,7 @@ public class SavingServiceImpl extends ServiceImpl<SavingMapper, Saving> impleme
         SavingRecord record = new SavingRecord();
         record.setSavingId(id);
         record.setCoupleId(coupleId);
-        record.setUserId(userId);
+        record.setUserId(depositor.getId());
         record.setAmount(amount);
         record.setNote(note);
         savingRecordMapper.insert(record);
@@ -174,6 +182,33 @@ public class SavingServiceImpl extends ServiceImpl<SavingMapper, Saving> impleme
             throw new BusinessException(ResultCode.NOT_COUPLED);
         }
         return user.getCoupleId();
+    }
+
+    private User resolveDepositor(User currentUser, Couple couple, String depositorRole) {
+        if (depositorRole == null || depositorRole.isBlank()) {
+            return currentUser;
+        }
+
+        String role = depositorRole.trim().toUpperCase();
+        Long depositorId;
+        if ("A".equals(role)) {
+            depositorId = couple != null ? couple.getUserA() : null;
+        } else if ("B".equals(role)) {
+            depositorId = couple != null ? couple.getUserB() : null;
+        } else {
+            throw new BusinessException("存款人无效");
+        }
+
+        if (depositorId == null) {
+            throw new BusinessException("存款人无效");
+        }
+
+        User depositor = userMapper.selectById(depositorId);
+        if (depositor == null || !depositor.getCoupleId().equals(currentUser.getCoupleId())) {
+            throw new BusinessException("存款人无效");
+        }
+
+        return depositor;
     }
     
     private SavingDTO toDTO(Saving saving) {

@@ -15,7 +15,7 @@ public interface SavingService extends IService<Saving> {
     
     Long create(SavingDTO dto);
     
-    void deposit(Long id, BigDecimal amount, String note);
+    void deposit(Long id, BigDecimal amount, String note, String depositorRole);
     
     void complete(Long id);
 }
