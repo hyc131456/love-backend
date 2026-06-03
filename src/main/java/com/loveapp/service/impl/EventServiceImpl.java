@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.loveapp.common.ResultCode;
 import com.loveapp.common.exception.BusinessException;
 import com.loveapp.dto.EventDTO;
+import com.loveapp.dto.EventReorderDTO;
 import com.loveapp.entity.Couple;
 import com.loveapp.entity.Event;
 import com.loveapp.entity.User;
@@ -14,7 +15,6 @@ import com.loveapp.mapper.CoupleMapper;
 import com.loveapp.mapper.EventMapper;
 import com.loveapp.mapper.UserMapper;
 import com.loveapp.service.EventService;
-import com.loveapp.service.IntimacyService;
 import com.loveapp.utils.UserContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,9 +41,6 @@ public class EventServiceImpl extends ServiceImpl<EventMapper, Event> implements
     @Autowired
     private CoupleMapper coupleMapper;
     
-    @Autowired
-    private IntimacyService intimacyService;
-    
     @Override
     public Map<String, Object> getMonthEvents(int year, int month) {
         Long coupleId = getCoupleId();
@@ -56,7 +53,10 @@ public class EventServiceImpl extends ServiceImpl<EventMapper, Event> implements
                 .eq(Event::getCoupleId, coupleId)
                 .ge(Event::getEventDate, startDate)
                 .le(Event::getEventDate, endDate)
-                .orderByAsc(Event::getEventDate));
+                .orderByAsc(Event::getEventDate)
+                .orderByAsc(Event::getSortOrder)
+                .orderByAsc(Event::getEventTime)
+                .orderByAsc(Event::getId));
         
         List<EventDTO> eventList = events.stream().map(this::toDTO).collect(Collectors.toList());
         
@@ -82,7 +82,9 @@ public class EventServiceImpl extends ServiceImpl<EventMapper, Event> implements
         List<Event> events = list(new LambdaQueryWrapper<Event>()
                 .eq(Event::getCoupleId, coupleId)
                 .eq(Event::getEventDate, localDate)
-                .orderByAsc(Event::getEventTime));
+                .orderByAsc(Event::getSortOrder)
+                .orderByAsc(Event::getEventTime)
+                .orderByAsc(Event::getId));
         
         return events.stream().map(this::toDTO).collect(Collectors.toList());
     }
@@ -127,7 +129,7 @@ public class EventServiceImpl extends ServiceImpl<EventMapper, Event> implements
         BeanUtil.copyProperties(dto, event);
         event.setCoupleId(coupleId);
         event.setCreatorId(userId);
-        event.setStatus(0);
+        event.setSortOrder(getNextSortOrder(coupleId, event.getEventDate()));
         
         // 设置默认值
         if (event.getRepeatType() == null) {
@@ -155,9 +157,50 @@ public class EventServiceImpl extends ServiceImpl<EventMapper, Event> implements
         if (event == null || !event.getCoupleId().equals(coupleId)) {
             throw new BusinessException(ResultCode.EVENT_NOT_FOUND);
         }
+
+        LocalDate originalDate = event.getEventDate();
         
-        BeanUtil.copyProperties(dto, event, "id", "coupleId", "creatorId", "createdAt");
+        BeanUtil.copyProperties(dto, event, "id", "coupleId", "creatorId", "createdAt", "sortOrder");
+        if (!Objects.equals(originalDate, event.getEventDate())) {
+            event.setSortOrder(getNextSortOrder(coupleId, event.getEventDate()));
+        }
         updateById(event);
+    }
+
+    @Override
+    public void reorderEvents(EventReorderDTO dto) {
+        if (dto == null || dto.getDate() == null || CollUtil.isEmpty(dto.getEventIds())) {
+            throw new BusinessException(ResultCode.PARAM_ERROR);
+        }
+
+        Long coupleId = getCoupleId();
+        List<Event> events = list(new LambdaQueryWrapper<Event>()
+                .eq(Event::getCoupleId, coupleId)
+                .eq(Event::getEventDate, dto.getDate())
+                .orderByAsc(Event::getSortOrder)
+                .orderByAsc(Event::getEventTime)
+                .orderByAsc(Event::getId));
+
+        if (events.size() != dto.getEventIds().size()) {
+            throw new BusinessException(ResultCode.PARAM_ERROR);
+        }
+
+        Map<Long, Event> eventMap = events.stream().collect(Collectors.toMap(Event::getId, event -> event));
+        Set<Long> seenIds = new HashSet<>();
+        List<Event> updates = new ArrayList<>();
+
+        for (int i = 0; i < dto.getEventIds().size(); i++) {
+            Long id = dto.getEventIds().get(i);
+            Event event = eventMap.get(id);
+            if (event == null || !seenIds.add(id)) {
+                throw new BusinessException(ResultCode.PARAM_ERROR);
+            }
+
+            event.setSortOrder(i);
+            updates.add(event);
+        }
+
+        updateBatchById(updates);
     }
     
     @Override
@@ -170,22 +213,6 @@ public class EventServiceImpl extends ServiceImpl<EventMapper, Event> implements
         }
         
         removeById(id);
-    }
-    
-    @Override
-    public void completeEvent(Long id) {
-        Long coupleId = getCoupleId();
-        
-        Event event = getById(id);
-        if (event == null || !event.getCoupleId().equals(coupleId)) {
-            throw new BusinessException(ResultCode.EVENT_NOT_FOUND);
-        }
-        
-        event.setStatus(1);
-        updateById(event);
-        
-        // 完成事项积分
-        intimacyService.addScore(IntimacyService.ACTION_TODO_COMPLETE);
     }
     
     private Long getCoupleId() {
@@ -207,6 +234,24 @@ public class EventServiceImpl extends ServiceImpl<EventMapper, Event> implements
         return dto;
     }
 
+    private int getNextSortOrder(Long coupleId, LocalDate eventDate) {
+        if (eventDate == null) {
+            return 0;
+        }
+
+        List<Event> events = list(new LambdaQueryWrapper<Event>()
+                .eq(Event::getCoupleId, coupleId)
+                .eq(Event::getEventDate, eventDate)
+                .orderByDesc(Event::getSortOrder)
+                .orderByDesc(Event::getId)
+                .last("LIMIT 1"));
+
+        if (CollUtil.isEmpty(events) || events.get(0).getSortOrder() == null) {
+            return 0;
+        }
+        return events.get(0).getSortOrder() + 1;
+    }
+
     private List<EventDTO> buildAnniversaryItems(Long coupleId, LocalDate today) {
         List<EventDTO> items = new ArrayList<>();
 
@@ -218,7 +263,6 @@ public class EventServiceImpl extends ServiceImpl<EventMapper, Event> implements
         List<Event> anniversaryEvents = list(new LambdaQueryWrapper<Event>()
                 .eq(Event::getCoupleId, coupleId)
                 .eq(Event::getType, Event.TYPE_ANNIVERSARY)
-                .ne(Event::getStatus, 2)
                 .orderByAsc(Event::getEventDate));
 
         for (Event event : anniversaryEvents) {

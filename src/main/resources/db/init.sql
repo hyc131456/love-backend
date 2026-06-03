@@ -89,6 +89,7 @@ CREATE TABLE `events` (
     `is_lunar` TINYINT DEFAULT 0 COMMENT '是否农历',
     `related_id` BIGINT DEFAULT NULL COMMENT '关联的日记/菜谱ID',
     `creator_id` BIGINT NOT NULL COMMENT '创建者用户ID',
+    `sort_order` INT DEFAULT 0 COMMENT '当天事件排序',
     `status` TINYINT DEFAULT 0 COMMENT '状态: 0正常 1已完成 2已删除',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',

@@ -62,9 +62,9 @@ public class Event {
     
     /** 创建者用户ID */
     private Long creatorId;
-    
-    /** 状态: 0正常 1已完成 2已删除 */
-    private Integer status;
+
+    /** 当天事件排序 */
+    private Integer sortOrder;
     
     /** 创建时间 */
     @TableField(fill = FieldFill.INSERT)

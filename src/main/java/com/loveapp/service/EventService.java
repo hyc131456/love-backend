@@ -2,6 +2,7 @@ package com.loveapp.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.loveapp.dto.EventDTO;
+import com.loveapp.dto.EventReorderDTO;
 import com.loveapp.entity.Event;
 
 import java.util.List;
@@ -31,6 +32,11 @@ public interface EventService extends IService<Event> {
      * 获取最近的纪念日提醒
      */
     EventDTO getUpcomingReminder();
+
+    /**
+     * 调整当天事件顺序
+     */
+    void reorderEvents(EventReorderDTO dto);
     
     /**
      * 添加事件
@@ -46,9 +52,4 @@ public interface EventService extends IService<Event> {
      * 删除事件
      */
     void deleteEvent(Long id);
-    
-    /**
-     * 完成事项
-     */
-    void completeEvent(Long id);
 }

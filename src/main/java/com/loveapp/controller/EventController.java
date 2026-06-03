@@ -2,6 +2,7 @@ package com.loveapp.controller;
 
 import com.loveapp.common.Result;
 import com.loveapp.dto.EventDTO;
+import com.loveapp.dto.EventReorderDTO;
 import com.loveapp.service.EventService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
@@ -40,6 +41,15 @@ public class EventController {
     public Result<List<EventDTO>> getDayEvents(@RequestParam String date) {
         List<EventDTO> list = eventService.getDayEvents(date);
         return Result.success(list);
+    }
+
+    /**
+     * 调整当天事件顺序
+     */
+    @PostMapping("/events/reorder")
+    public Result<Void> reorderEvents(@RequestBody EventReorderDTO dto) {
+        eventService.reorderEvents(dto);
+        return Result.success();
     }
 
     /**
@@ -84,15 +94,6 @@ public class EventController {
     @DeleteMapping("/event/{id}")
     public Result<Void> deleteEvent(@PathVariable Long id) {
         eventService.deleteEvent(id);
-        return Result.success();
-    }
-    
-    /**
-     * 完成事项
-     */
-    @PostMapping("/event/{id}/complete")
-    public Result<Void> completeEvent(@PathVariable Long id) {
-        eventService.completeEvent(id);
         return Result.success();
     }
 }

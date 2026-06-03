@@ -49,10 +49,10 @@ public class EventDTO {
     
     /** 是否农历 */
     private Integer isLunar;
-    
-    /** 状态 */
-    private Integer status;
 
+    /** 当天事件排序 */
+    private Integer sortOrder;
+    
     /** 下一次发生日期 */
     private LocalDate nextOccurrence;
 
