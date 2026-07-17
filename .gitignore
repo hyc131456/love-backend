@@ -2,3 +2,4 @@
 /target/
 *.jpg
 love_app.tar
+.env
