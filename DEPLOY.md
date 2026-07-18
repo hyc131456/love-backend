@@ -1,12 +1,12 @@
 # Docker Compose 服务器部署
 
-Compose 文件位于后端仓库中，从 GitHub Container Registry（GHCR）拉取已经由 GitHub Actions 构建的前后端镜像。服务器需要安装 Docker Engine、Docker Compose 插件和 Git，并能访问 Docker Hub 与 `ghcr.io`。
+Compose 从 GitHub Container Registry（GHCR）拉取已经由 GitHub Actions 构建的前端、后端和数据库镜像。服务器只需要 Docker Engine、Docker Compose 插件和用于首次下载部署文件的 `curl`，不需要克隆代码仓库。
 
 ## 镜像发布流程
 
-- 后端 `master` 分支有新提交时，`.github/workflows/build-image.yml` 构建后端镜像并推送到 GHCR。
+- 后端 `master` 分支有新提交时，`.github/workflows/build-image.yml` 构建后端与数据库镜像并推送到 GHCR。
 - 前端 `main` 分支有新提交时，`.github/workflows/build-image.yml` 构建前端镜像并推送到 GHCR。
-- 两个镜像都会推送 `latest` 和当前 Git 提交 SHA 两个标签。
+- 三个镜像都会推送 `latest` 和对应的 Git 提交 SHA 标签。
 - Actions 只负责构建镜像，不连接服务器，也不会自动启动或更新服务。
 
 工作流使用 GitHub 自动提供的 `GITHUB_TOKEN` 写入 GHCR，不需要配置 SSH Secrets 或跨仓库 Token。也可以在两个仓库的 Actions 页面通过 `Run workflow` 手动触发镜像构建。
@@ -18,9 +18,13 @@ sudo mkdir -p /opt/love-app
 sudo chown -R "$USER":"$USER" /opt/love-app
 cd /opt/love-app
 
-git clone https://github.com/hyc131456/love-backend.git
+curl --fail --location \
+  --output docker-compose.yml \
+  https://raw.githubusercontent.com/hyc131456/love-backend/master/docker-compose.yml
+curl --fail --location \
+  --output .env.example \
+  https://raw.githubusercontent.com/hyc131456/love-backend/master/.env.example
 
-cd love-backend
 cp .env.example .env
 nano .env
 ```
@@ -46,11 +50,13 @@ curl http://127.0.0.1:8080/api/health
 ## 手动更新部署
 
 ```bash
-cd /opt/love-app/love-backend
-git pull --ff-only
+cd /opt/love-app
 docker compose pull
 docker compose up -d --remove-orphans
+docker compose ps
 ```
+
+日常更新只拉取镜像，不需要 `git pull`。仅当 Compose 结构或环境变量模板本身发生变化时，才需要重新下载对应文件。
 
 ## 日常运维
 
