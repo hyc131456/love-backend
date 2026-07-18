@@ -71,6 +71,7 @@ services:
     pull_policy: always
     restart: unless-stopped
     command:
+      - caddy
       - reverse-proxy
       - --from
       - "${APP_DOMAIN:?Set APP_DOMAIN in .env}"
