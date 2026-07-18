@@ -1,15 +1,28 @@
 # Docker Compose 服务器部署
 
-Compose 从 GitHub Container Registry（GHCR）拉取已经由 GitHub Actions 构建的前端、后端和数据库镜像，并使用 Caddy 为 `rachel.4inlove.top` 自动申请、续期 HTTPS 证书。服务器只需要 Docker Engine、Docker Compose 插件和用于首次下载部署文件的 `curl`，不需要克隆代码仓库。
+Compose 从 GitHub Container Registry（GHCR）拉取已经由 GitHub Actions 构建的前端、后端和数据库镜像。前端仅绑定宿主机回环地址 `127.0.0.1:18080`，由服务器现有的 OpenResty 提供域名、HTTPS 和公网入口。服务器不需要克隆代码仓库。
 
 ## 域名准备
 
 1. 在域名 DNS 控制台添加 `A` 记录：主机记录 `rachel`，记录值为服务器公网 IPv4。
 2. 只有服务器正确配置了公网 IPv6 时才添加 `AAAA` 记录；错误的 `AAAA` 会导致部分客户端无法访问。
-3. 在云安全组和服务器防火墙中开放 TCP `80`、TCP `443`；UDP `443` 可选，用于 HTTP/3。
-4. 确认服务器上没有其他程序占用 `80/443`。
+3. 在云安全组和服务器防火墙中开放 TCP `80`、TCP `443`。
+4. 在现有 OpenResty 或服务器管理面板中，为 `rachel.4inlove.top` 创建站点并申请 HTTPS 证书。
 
-Caddy 需要公网能够访问 `80/443` 才能完成证书签发。域名使用标准 HTTPS 端口，访问地址写作 `https://rachel.4inlove.top`，无需显式添加 `:443`。
+OpenResty 的反向代理目标设置为 `http://127.0.0.1:18080`。该端口只监听回环地址，不对公网开放。域名使用标准 HTTPS 端口，访问地址写作 `https://rachel.4inlove.top`，无需显式添加 `:443`。
+
+OpenResty 反向代理的核心配置如下，证书路径由现有面板或证书管理方式提供：
+
+```nginx
+location / {
+    proxy_pass http://127.0.0.1:18080;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
 
 ## 镜像发布流程
 
@@ -38,7 +51,7 @@ cp .env.example .env
 nano .env
 ```
 
-确认 `.env` 中 `APP_DOMAIN=rachel.4inlove.top`，并替换 `MYSQL_PASSWORD`、`MYSQL_ROOT_PASSWORD` 和 `JWT_SECRET`。使用微信登录时还需设置 `WECHAT_APPID` 与 `WECHAT_SECRET`。正常部署保持三个 `IMAGE_TAG` 为 `latest`；需要回滚时可改为 GitHub Actions 推送的提交 SHA 标签。
+确认 `.env` 中 `FRONTEND_PORT=18080`，并替换 `MYSQL_PASSWORD`、`MYSQL_ROOT_PASSWORD` 和 `JWT_SECRET`。使用微信登录时还需设置 `WECHAT_APPID` 与 `WECHAT_SECRET`。正常部署保持三个 `IMAGE_TAG` 为 `latest`；需要回滚时可改为 GitHub Actions 推送的提交 SHA 标签。
 
 如果 GHCR 中的镜像不是公开包，先使用具有 `read:packages` 权限的 GitHub Token 登录：
 
@@ -51,10 +64,10 @@ docker compose config
 docker compose pull
 docker compose up -d --remove-orphans
 docker compose ps
-curl https://rachel.4inlove.top/api/health
+curl http://127.0.0.1:18080/api/health
 ```
 
-访问地址为 `https://rachel.4inlove.top`。首次签发证书可能需要几十秒，可通过 `docker compose logs -f caddy` 查看进度。
+本机健康检查通过后，在 OpenResty 完成域名和证书配置，再访问 `https://rachel.4inlove.top`。
 
 ## 手动更新部署
 
@@ -74,10 +87,10 @@ docker compose ps
 docker compose ps
 
 # 查看日志
-docker compose logs -f caddy backend frontend database
+docker compose logs -f backend frontend database
 
 # 停止服务并保留数据
 docker compose down
 ```
 
-MySQL 数据保存在 `love-app_mysql-data` 卷，上传文件保存在 `love-app_upload-data` 卷，HTTPS 证书保存在 `love-app_caddy-data` 卷。初始化 SQL 仅在 MySQL 数据卷首次创建时运行。`docker compose down -v` 会永久删除数据库、上传文件和本机证书数据，不要在正常更新时使用。
+MySQL 数据保存在 `love-app_mysql-data` 卷，上传文件保存在 `love-app_upload-data` 卷。初始化 SQL 仅在 MySQL 数据卷首次创建时运行。`docker compose down -v` 会永久删除数据库和上传文件，不要在正常更新时使用。

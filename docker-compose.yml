@@ -54,8 +54,8 @@ services:
     image: "ghcr.io/hyc131456/love-frontend:${FRONTEND_IMAGE_TAG:-latest}"
     pull_policy: always
     restart: unless-stopped
-    expose:
-      - "80"
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-18080}:80"
     depends_on:
       backend:
         condition: service_healthy
@@ -66,33 +66,6 @@ services:
       retries: 3
       start_period: 10s
 
-  caddy:
-    image: caddy:2.10-alpine
-    pull_policy: always
-    restart: unless-stopped
-    dns:
-      - 223.5.5.5
-      - 1.1.1.1
-    command:
-      - caddy
-      - reverse-proxy
-      - --from
-      - "${APP_DOMAIN:?Set APP_DOMAIN in .env}"
-      - --to
-      - frontend:80
-    ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
-    volumes:
-      - caddy-data:/data
-      - caddy-config:/config
-    depends_on:
-      frontend:
-        condition: service_healthy
-
 volumes:
   mysql-data:
   upload-data:
-  caddy-data:
-  caddy-config:
