@@ -2,41 +2,14 @@
 
 Compose 文件位于后端仓库中，从 GitHub Container Registry（GHCR）拉取已经由 GitHub Actions 构建的前后端镜像。服务器需要安装 Docker Engine、Docker Compose 插件和 Git，并能访问 Docker Hub 与 `ghcr.io`。
 
-## 自动发布流程
+## 镜像发布流程
 
-- 后端 `master` 分支有新提交时，`.github/workflows/build-and-deploy.yml` 构建后端镜像并推送到 GHCR，然后统一部署。
-- 前端 `main` 分支有新提交时，`.github/workflows/build-image.yml` 构建前端镜像并推送到 GHCR，然后通过 `repository_dispatch` 通知后端工作流部署。
+- 后端 `master` 分支有新提交时，`.github/workflows/build-image.yml` 构建后端镜像并推送到 GHCR。
+- 前端 `main` 分支有新提交时，`.github/workflows/build-image.yml` 构建前端镜像并推送到 GHCR。
 - 两个镜像都会推送 `latest` 和当前 Git 提交 SHA 两个标签。
+- Actions 只负责构建镜像，不连接服务器，也不会自动启动或更新服务。
 
-后端仓库需要配置以下 Actions Secrets：
-
-| Secret | 说明 |
-| --- | --- |
-| `DEPLOY_HOST` | 服务器 IP 或域名 |
-| `DEPLOY_PORT` | SSH 端口，可省略，默认 `22` |
-| `DEPLOY_USER` | SSH 用户，需有执行 Docker 的权限 |
-| `DEPLOY_PATH` | 后端仓库路径，可省略，默认 `/opt/love-app/love-backend` |
-| `DEPLOY_SSH_KEY` | GitHub Actions 使用的 SSH 私钥全文 |
-| `DEPLOY_KNOWN_HOSTS` | `ssh-keyscan -H -p 22 服务器IP` 的完整输出 |
-
-前端仓库需要配置 `BACKEND_DISPATCH_TOKEN`。它应是只授权 `love-backend` 仓库的 Fine-grained PAT，并具有 `Contents: Read and write` 权限，用于调用 `repository_dispatch`。
-
-建议为 Actions 创建专用 SSH 密钥：
-
-```bash
-ssh-keygen -t ed25519 -C github-actions-love-app -f love_app_deploy
-ssh-copy-id -i love_app_deploy.pub deploy@服务器IP
-```
-
-将 `love_app_deploy` 私钥内容保存为 `DEPLOY_SSH_KEY`，不要提交到仓库。
-
-首次启用时建议按以下顺序操作：
-
-1. 完成下面的服务器初始化并创建 `.env`。
-2. 在前端仓库手动运行一次 `Build frontend image`，生成前端镜像。
-3. 在后端仓库手动运行一次 `Build backend and deploy`，生成后端镜像并部署。
-
-SSH Secrets 未配置时，后端工作流仍会构建并推送镜像，但会安全跳过部署。`BACKEND_DISPATCH_TOKEN` 未配置时，前端工作流仍会推送镜像，但不会通知后端部署。
+工作流使用 GitHub 自动提供的 `GITHUB_TOKEN` 写入 GHCR，不需要配置 SSH Secrets 或跨仓库 Token。也可以在两个仓库的 Actions 页面通过 `Run workflow` 手动触发镜像构建。
 
 ## 首次部署
 
@@ -70,7 +43,7 @@ curl http://127.0.0.1:8080/api/health
 
 默认访问地址为 `http://服务器IP:8080`。确保云平台安全组和服务器防火墙允许 `.env` 中 `APP_PORT` 对应的 TCP 端口。
 
-## 更新部署
+## 手动更新部署
 
 ```bash
 cd /opt/love-app/love-backend
