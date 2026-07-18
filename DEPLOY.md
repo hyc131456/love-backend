@@ -1,6 +1,6 @@
 # Docker Compose 服务器部署
 
-Compose 从 GitHub Container Registry（GHCR）拉取已经由 GitHub Actions 构建的前端、后端和数据库镜像。前端仅绑定宿主机回环地址 `127.0.0.1:18080`，由服务器现有的 OpenResty 提供域名、HTTPS 和公网入口。服务器不需要克隆代码仓库。
+Compose 从 GitHub Container Registry（GHCR）拉取已经由 GitHub Actions 构建的前端、后端和数据库镜像。前端默认监听宿主机的 `18080` 端口，既可以通过服务器 IP 直接访问，也可以由现有 OpenResty 反向代理。服务器不需要克隆代码仓库。
 
 ## 域名准备
 
@@ -9,7 +9,7 @@ Compose 从 GitHub Container Registry（GHCR）拉取已经由 GitHub Actions �
 3. 在云安全组和服务器防火墙中开放 TCP `80`、TCP `443`。
 4. 在现有 OpenResty 或服务器管理面板中，为 `rachel.4inlove.top` 创建站点并申请 HTTPS 证书。
 
-OpenResty 的反向代理目标设置为 `http://127.0.0.1:18080`。该端口只监听回环地址，不对公网开放。域名使用标准 HTTPS 端口，访问地址写作 `https://rachel.4inlove.top`，无需显式添加 `:443`。
+OpenResty 的反向代理目标设置为 `http://127.0.0.1:18080`。域名使用标准 HTTPS 端口，访问地址写作 `https://rachel.4inlove.top`，无需显式添加 `:443`。
 
 OpenResty 反向代理的核心配置如下，证书路径由现有面板或证书管理方式提供：
 
@@ -67,7 +67,7 @@ docker compose ps
 curl http://127.0.0.1:18080/api/health
 ```
 
-本机健康检查通过后，在 OpenResty 完成域名和证书配置，再访问 `https://rachel.4inlove.top`。
+本机健康检查通过后，可以直接访问 `http://服务器IP:18080`；完成 OpenResty 域名和证书配置后，也可以访问 `https://rachel.4inlove.top`。
 
 ## 手动更新部署
 
