@@ -51,7 +51,7 @@ cp .env.example .env
 nano .env
 ```
 
-确认 `.env` 中 `FRONTEND_PORT=18080`，并替换 `MYSQL_PASSWORD`、`MYSQL_ROOT_PASSWORD` 和 `JWT_SECRET`。使用微信登录时还需设置 `WECHAT_APPID` 与 `WECHAT_SECRET`。正常部署保持三个 `IMAGE_TAG` 为 `latest`；需要回滚时可改为 GitHub Actions 推送的提交 SHA 标签。
+确认 `.env` 中 `FRONTEND_PORT=18080`、`DATABASE_PORT=13306`，并替换 `MYSQL_PASSWORD`、`MYSQL_ROOT_PASSWORD` 和 `JWT_SECRET`。使用微信登录时还需设置 `WECHAT_APPID` 与 `WECHAT_SECRET`。正常部署保持三个 `IMAGE_TAG` 为 `latest`；需要回滚时可改为 GitHub Actions 推送的提交 SHA 标签。
 
 如果 GHCR 中的镜像不是公开包，先使用具有 `read:packages` 权限的 GitHub Token 登录：
 
@@ -68,6 +68,8 @@ curl http://127.0.0.1:18080/api/health
 ```
 
 本机健康检查通过后，可以直接访问 `http://服务器IP:18080`；完成 OpenResty 域名和证书配置后，也可以访问 `https://rachel.4inlove.top`。
+
+MySQL 映射到宿主机 `13306` 端口，连接参数为服务器 IP、端口 `13306`、数据库 `love_app`、用户 `love_app`。该端口会监听所有网卡，必须使用云安全组或服务器防火墙限制可信来源 IP，不建议向整个公网开放。
 
 ## 手动更新部署
 
