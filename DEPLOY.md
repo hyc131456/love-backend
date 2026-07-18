@@ -80,6 +80,36 @@ docker compose ps
 
 日常更新只拉取镜像，不需要 `git pull`。仅当 Compose 结构或环境变量模板本身发生变化时，才需要重新下载对应文件。
 
+## 自动更新脚本
+
+服务器首次下载脚本并赋予执行权限：
+
+```bash
+cd /opt/love-app
+curl --fail --location \
+  --output deploy.sh \
+  https://raw.githubusercontent.com/hyc131456/love-backend/master/deploy.sh
+chmod +x deploy.sh
+./deploy.sh
+```
+
+脚本只拉取 `backend` 和 `frontend` 镜像，不会拉取代码仓库、更新数据库镜像或删除数据卷。它会串行更新后端和前端，并等待两个服务健康后才退出。同一时间重复执行时，后一个进程会自动退出。
+
+使用 Cron 每 5 分钟检查一次：
+
+```bash
+crontab -l 2>/dev/null | grep -v '/opt/love-app/deploy.sh' > /tmp/love-app-cron || true
+echo '*/5 * * * * /opt/love-app/deploy.sh >> /var/log/love-app-deploy.log 2>&1' >> /tmp/love-app-cron
+crontab /tmp/love-app-cron
+rm -f /tmp/love-app-cron
+```
+
+查看自动更新日志：
+
+```bash
+tail -f /var/log/love-app-deploy.log
+```
+
 ## 日常运维
 
 ```bash
